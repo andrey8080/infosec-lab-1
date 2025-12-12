@@ -11,11 +11,11 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import ru.itmo.infosec.dto.AuthRequest;
 import ru.itmo.infosec.dto.AuthResponse;
+import ru.itmo.infosec.dto.RegisterRequest;
+import ru.itmo.infosec.dto.SuccessResponse;
+import ru.itmo.infosec.dto.ErrorResponse;
 import ru.itmo.infosec.security.JwtUtil;
 import ru.itmo.infosec.service.UserService;
-
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Контроллер для аутентификации
@@ -51,13 +51,11 @@ public class AuthController {
             return ResponseEntity.ok(new AuthResponse(jwt, userDetails.getUsername()));
 
         } catch (BadCredentialsException e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Invalid username or password");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ErrorResponse("Invalid username or password"));
         } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Authentication failed: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ErrorResponse("Authentication failed: " + e.getMessage()));
         }
     }
 
@@ -65,33 +63,17 @@ public class AuthController {
      * POST /auth/register - Регистрация нового пользователя (дополнительный метод)
      */
     @PostMapping("/register")
-    public ResponseEntity<?> register(@Valid @RequestBody Map<String, String> request) {
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
         try {
-            String username = request.get("username");
-            String password = request.get("password");
-            String email = request.get("email");
-
-            if (username == null || password == null || email == null) {
-                Map<String, String> error = new HashMap<>();
-                error.put("error", "Username, password and email are required");
-                return ResponseEntity.badRequest().body(error);
-            }
-
-            userService.createUser(username, password, email);
-
-            Map<String, String> response = new HashMap<>();
-            response.put("message", "User registered successfully");
-            response.put("username", username);
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
-
+            userService.createUser(request.getUsername(), request.getPassword(), request.getEmail());
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(new SuccessResponse("User registered successfully", request.getUsername()));
         } catch (IllegalArgumentException e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(new ErrorResponse(e.getMessage()));
         } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Registration failed: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ErrorResponse("Registration failed: " + e.getMessage()));
         }
     }
 }

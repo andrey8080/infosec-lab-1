@@ -1,10 +1,14 @@
 package ru.itmo.infosec.controller;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import ru.itmo.infosec.dto.ErrorResponse;
+import ru.itmo.infosec.dto.MessageRequest;
+import ru.itmo.infosec.dto.MessageResponse;
 import ru.itmo.infosec.model.User;
 import ru.itmo.infosec.repository.UserRepository;
 import ru.itmo.infosec.util.XssSanitizer;
@@ -84,14 +88,8 @@ public class DataController {
      * данных
      */
     @PostMapping("/message")
-    public ResponseEntity<?> createMessage(@RequestBody Map<String, String> request) {
-        String rawMessage = request.get("message");
-
-        if (rawMessage == null || rawMessage.trim().isEmpty()) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Message cannot be empty");
-            return ResponseEntity.badRequest().body(error);
-        }
+    public ResponseEntity<?> createMessage(@Valid @RequestBody MessageRequest request) {
+        String rawMessage = request.getMessage();
 
         // Санитизация входящего сообщения (защита от XSS)
         String sanitizedMessage = xssSanitizer.sanitize(rawMessage);
@@ -100,12 +98,12 @@ public class DataController {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String currentUsername = authentication.getName();
 
-        Map<String, String> response = new HashMap<>();
-        response.put("user", currentUsername);
-        response.put("originalMessage", rawMessage);
-        response.put("sanitizedMessage", sanitizedMessage);
-        response.put("escapedMessage", escapedMessage);
-        response.put("status", "Message processed successfully");
+        MessageResponse response = new MessageResponse(
+                currentUsername,
+                rawMessage,
+                sanitizedMessage,
+                escapedMessage,
+                "Message processed successfully");
 
         return ResponseEntity.ok(response);
     }
